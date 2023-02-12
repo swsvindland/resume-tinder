@@ -64,3 +64,13 @@ model VerificationToken {
 
     @@unique([identifier, token])
 }
+
+model File {
+    id        String   @id @default(cuid())
+    name      String
+    userId    String
+    size      Int
+    url       String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}

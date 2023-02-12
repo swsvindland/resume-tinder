@@ -4,6 +4,10 @@ import { useDropzone } from 'react-dropzone';
 import { useCallback, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { NotAuthorized } from '../components/NotAuthorized';
+import { api } from '../utils/api';
+import { v4 } from 'uuid';
+import { useQueryClient } from '@tanstack/react-query';
+import Accept from 'react-dropzone/typings/tests/accept';
 
 const Upload: NextPage = () => {
     const { data: sessionData } = useSession();
@@ -34,15 +38,41 @@ const Upload: NextPage = () => {
 export default Upload;
 
 function Dropzone() {
+    const { data: session, status } = useSession();
     const [files, setFiles] = useState<File[]>([]);
+    const queryClient = useQueryClient();
+    const { data, isLoading } = api.file.getAll.useQuery();
+    const uploadMutation = api.file.upload.useMutation({
+        onSuccess: async () => {
+            await queryClient.invalidateQueries(api.file.getQueryKey());
+        },
+    });
 
-    const onDrop = useCallback((acceptedFiles: File[]) => {
-        // Do something with the files
-        setFiles(acceptedFiles);
-    }, []);
+    const onDrop = useCallback(
+        (acceptedFiles: File[]) => {
+            // Do something with the files
+            setFiles(acceptedFiles);
+            acceptedFiles.forEach((file) => {
+                uploadMutation.mutate({
+                    id: v4(),
+                    userId: session!.user.id,
+                    type: 'pdf',
+                    url: '',
+                    name: file.name,
+                    size: file.size,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                });
+            });
+        },
+        [session, uploadMutation]
+    );
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
+        accept: {
+            'application/pdf': ['.pdf'],
+        },
     });
 
     return (
@@ -63,7 +93,7 @@ function Dropzone() {
                 )}
             </div>
             <ul>
-                {files.map((file: File) => (
+                {data?.map((file) => (
                     <li key={file.name} className="text-md text-white">
                         {file.name}
                     </li>
