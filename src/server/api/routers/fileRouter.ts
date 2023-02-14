@@ -73,6 +73,27 @@ export const fileRouter = createTRPCRouter({
             console.error('error', error);
         }
     }),
+    getAccepted: protectedProcedure.query(async ({ ctx }) => {
+        try {
+            return await ctx.prisma.file.findMany({
+                where: {
+                    AND: [
+                        {
+                            userId: ctx.session.user.id,
+                        },
+                        {
+                            status: FileStatus.Accepted,
+                        },
+                    ],
+                },
+                orderBy: {
+                    createdAt: 'desc',
+                },
+            });
+        } catch (error) {
+            console.error('error', error);
+        }
+    }),
     rejectDocument: protectedProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
