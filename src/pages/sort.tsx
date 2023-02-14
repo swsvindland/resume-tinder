@@ -31,7 +31,7 @@ const Sort: NextPage = () => {
                     <Sorter />
                     <Link
                         className="my-2 rounded-full bg-white/10 px-10 py-3 text-center font-semibold text-white no-underline transition hover:bg-white/20"
-                        href="/Interview"
+                        href="/interview"
                     >
                         Interview
                     </Link>
