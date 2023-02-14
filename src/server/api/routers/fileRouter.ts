@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc';
+import { createTRPCRouter, protectedProcedure } from '../trpc';
+import { ref } from '@firebase/storage';
+import { app, firebaseConfig, storage } from '../../../utils/firebase';
 
 export const fileRouter = createTRPCRouter({
     upload: protectedProcedure
@@ -16,6 +18,10 @@ export const fileRouter = createTRPCRouter({
         )
         .mutation(async ({ ctx, input }) => {
             try {
+                if (!input) {
+                    return;
+                }
+
                 await ctx.prisma.file.create({
                     data: {
                         id: input.id,
@@ -31,7 +37,7 @@ export const fileRouter = createTRPCRouter({
                 console.log(error);
             }
         }),
-    getAll: publicProcedure.query(async ({ ctx }) => {
+    getAll: protectedProcedure.query(async ({ ctx }) => {
         try {
             return await ctx.prisma.file.findMany({
                 where: {
@@ -43,6 +49,13 @@ export const fileRouter = createTRPCRouter({
             });
         } catch (error) {
             console.log('error', error);
+        }
+    }),
+    getFirebaseConfig: protectedProcedure.query(() => {
+        try {
+            return firebaseConfig;
+        } catch (error) {
+            console.error('error', error);
         }
     }),
 });

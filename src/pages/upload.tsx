@@ -1,4 +1,4 @@
-import { NextPage } from 'next';
+import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useDropzone } from 'react-dropzone';
 import { useCallback, useState } from 'react';
@@ -7,7 +7,15 @@ import { NotAuthorized } from '../components/NotAuthorized';
 import { api } from '../utils/api';
 import { v4 } from 'uuid';
 import { useQueryClient } from '@tanstack/react-query';
-import Accept from 'react-dropzone/typings/tests/accept';
+import Link from 'next/link';
+import {
+    getDownloadURL,
+    getStorage,
+    ref,
+    uploadBytes,
+} from '@firebase/storage';
+import { storage } from '../utils/firebase';
+import { initializeApp } from 'firebase/app';
 
 const Upload: NextPage = () => {
     const { data: sessionData } = useSession();
@@ -38,10 +46,10 @@ const Upload: NextPage = () => {
 export default Upload;
 
 function Dropzone() {
-    const { data: session, status } = useSession();
-    const [files, setFiles] = useState<File[]>([]);
+    const { data: session } = useSession();
+    const [loading, setLoading] = useState<boolean>(false);
     const queryClient = useQueryClient();
-    const { data, isLoading } = api.file.getAll.useQuery();
+    const allFilesQuery = api.file.getAll.useQuery();
     const uploadMutation = api.file.upload.useMutation({
         onSuccess: async () => {
             await queryClient.invalidateQueries(api.file.getQueryKey());
@@ -50,20 +58,37 @@ function Dropzone() {
 
     const onDrop = useCallback(
         (acceptedFiles: File[]) => {
-            // Do something with the files
-            setFiles(acceptedFiles);
-            acceptedFiles.forEach((file) => {
-                uploadMutation.mutate({
-                    id: v4(),
-                    userId: session!.user.id,
-                    type: 'pdf',
-                    url: '',
-                    name: file.name,
-                    size: file.size,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                });
-            });
+            if (!session) return;
+
+            const storage = getStorage();
+
+            for (const file of acceptedFiles) {
+                setLoading(true);
+                const id = v4();
+                const storageRef = ref(storage, `${session.user.id}/${id}.pdf`);
+                uploadBytes(storageRef, file)
+                    .then((snapshot) => {
+                        getDownloadURL(snapshot.ref)
+                            .then((url) => {
+                                uploadMutation.mutate({
+                                    id: id,
+                                    userId: session.user.id,
+                                    name: file.name,
+                                    size: file.size,
+                                    url,
+                                    createdAt: new Date().toISOString(),
+                                    updatedAt: new Date().toISOString(),
+                                });
+                            })
+                            .catch((error) => {
+                                console.error('error', error);
+                            });
+                    })
+                    .catch((error) => {
+                        console.error('error', error);
+                    })
+                    .finally(() => setLoading(false));
+            }
         },
         [session, uploadMutation]
     );
@@ -74,6 +99,10 @@ function Dropzone() {
             'application/pdf': ['.pdf'],
         },
     });
+
+    if (allFilesQuery.isLoading || loading) {
+        return <span className="text-lg text-white">Loading...</span>;
+    }
 
     return (
         <div className="grid grid-cols-1">
@@ -93,12 +122,24 @@ function Dropzone() {
                 )}
             </div>
             <ul>
-                {data?.map((file) => (
-                    <li key={file.name} className="text-md text-white">
+                {allFilesQuery.data?.map((file) => (
+                    <li key={file.id} className="text-md text-white">
                         {file.name}
                     </li>
                 ))}
             </ul>
+            {!uploadMutation.isLoading ? (
+                <>
+                    <Link
+                        className="my-2 rounded-full bg-white/10 px-10 py-3 text-center font-semibold text-white no-underline transition hover:bg-white/20"
+                        href="/sort"
+                    >
+                        Sort Resumes
+                    </Link>
+                </>
+            ) : (
+                <span className="text-white">Uploading...</span>
+            )}
         </div>
     );
 }
