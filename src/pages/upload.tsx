@@ -14,8 +14,7 @@ import {
     ref,
     uploadBytes,
 } from '@firebase/storage';
-import { storage } from '../utils/firebase';
-import { initializeApp } from 'firebase/app';
+import { FileStatus } from '../types/FileStatus';
 
 const Upload: NextPage = () => {
     const { data: sessionData } = useSession();
@@ -76,6 +75,7 @@ function Dropzone() {
                                     name: file.name,
                                     size: file.size,
                                     url,
+                                    status: FileStatus.NotSorted,
                                     createdAt: new Date().toISOString(),
                                     updatedAt: new Date().toISOString(),
                                 });

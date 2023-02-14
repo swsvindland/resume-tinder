@@ -6,6 +6,8 @@ import type { FC } from 'react';
 import { NotAuthorized } from '../components/NotAuthorized';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 
 const Sort: NextPage = () => {
     const { data: sessionData } = useSession();
@@ -22,14 +24,17 @@ const Sort: NextPage = () => {
                 <link rel="icon" href="/favicon.ico" />
             </Head>
             <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c]">
-                <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 ">
-                    <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-[5rem]">
+                <div className="container flex flex-col items-center justify-center p-4">
+                    <h1 className="mb-4 text-4xl font-extrabold tracking-tight text-white">
                         Sort
                     </h1>
-
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-                        <DocumentViewer />
-                    </div>
+                    <Sorter />
+                    <Link
+                        className="my-2 rounded-full bg-white/10 px-10 py-3 text-center font-semibold text-white no-underline transition hover:bg-white/20"
+                        href="/interview"
+                    >
+                        Interview
+                    </Link>
                 </div>
             </main>
         </>
@@ -38,32 +43,54 @@ const Sort: NextPage = () => {
 
 export default Sort;
 
-const DocumentViewer: FC = () => {
-    const { data, isLoading } = api.file.getAll.useQuery();
+const Sorter: FC = () => {
+    const queryClient = useQueryClient();
+    const fileQuery = api.file.getFirstNotSorted.useQuery();
+    const acceptMutation = api.file.acceptDocument.useMutation({
+        onSuccess: async () => {
+            await queryClient.invalidateQueries(api.file.getQueryKey());
+        },
+    });
+    const rejectMutation = api.file.rejectDocument.useMutation({
+        onSuccess: async () => {
+            await queryClient.invalidateQueries(api.file.getQueryKey());
+        },
+    });
 
     useEffect(() => {
         pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
     }, []);
 
-    if (isLoading) {
-        return <div>Loading...</div>;
-    }
+    if (fileQuery.isLoading) return <div>Loading...</div>;
+    if (!fileQuery.data) return null;
 
     return (
-        <div>
-            {data?.map((file) => (
-                <div className="text-white" key={file.id}>
-                    <div>
-                        <Document file={file.url}>
-                            <Page
-                                pageNumber={1}
-                                renderTextLayer={false}
-                                renderAnnotationLayer={false}
-                            />
-                        </Document>
-                    </div>
-                </div>
-            ))}
+        <div className="flex flex-col">
+            <div className="flex flex-row items-center justify-center">
+                <button
+                    onClick={() =>
+                        rejectMutation.mutate({ id: fileQuery.data?.id ?? '' })
+                    }
+                    className="m-4 rounded-2xl bg-white/10 px-10 py-20 font-semibold text-white no-underline transition hover:bg-white/20"
+                >
+                    Reject
+                </button>
+                <Document file={fileQuery.data?.url}>
+                    <Page
+                        pageNumber={1}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                    />
+                </Document>
+                <button
+                    onClick={() =>
+                        acceptMutation.mutate({ id: fileQuery.data?.id ?? '' })
+                    }
+                    className="m-4 rounded-2xl bg-white/10 px-10 py-20 font-semibold text-white no-underline transition hover:bg-white/20"
+                >
+                    Accept
+                </button>
+            </div>
         </div>
     );
 };
