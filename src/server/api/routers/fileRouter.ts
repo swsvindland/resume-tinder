@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createTRPCRouter, protectedProcedure } from '../trpc';
+import { createTRPCRouter, protectedProcedure, publicProcedure } from '../trpc';
 import { firebaseConfig } from '../../../utils/firebase';
 import { FileStatus } from '../../../types/FileStatus';
 export const fileRouter = createTRPCRouter({
@@ -134,7 +134,7 @@ export const fileRouter = createTRPCRouter({
                 console.error('error', error);
             }
         }),
-    getFirebaseConfig: protectedProcedure.query(() => {
+    getFirebaseConfig: publicProcedure.query(() => {
         try {
             return firebaseConfig;
         } catch (error) {
