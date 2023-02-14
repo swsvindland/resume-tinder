@@ -12,13 +12,14 @@ const MyApp: AppType<{ session: Session | null }> = ({
     Component,
     pageProps: { session, ...pageProps },
 }) => {
-    const firebaseConfigQuery = api.file.getFirebaseConfig.useQuery();
-
     useEffect(() => {
+        if (!session) return;
+
+        const firebaseConfigQuery = api.file.getFirebaseConfig.useQuery();
         if (!firebaseConfigQuery.data) return;
 
         initializeApp(firebaseConfigQuery.data);
-    }, [firebaseConfigQuery.data]);
+    }, [session]);
 
     return (
         <SessionProvider session={session}>
