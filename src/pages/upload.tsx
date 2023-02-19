@@ -9,7 +9,7 @@ import { v4 } from 'uuid';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { FileStatus } from '../types/FileStatus';
-import { fileToBase64 } from '../utils/fileToBase64';
+import { encode } from 'base64-arraybuffer';
 
 const Upload: NextPage = () => {
     const { data: sessionData } = useSession();
@@ -62,21 +62,22 @@ function Dropzone() {
 
             for (const file of acceptedFiles) {
                 const id = v4();
-                fileToBase64(file)
-                    .then((base) => {
+
+                file.arrayBuffer()
+                    .then((buffer) => {
                         uploadMutation.mutate({
                             id: id,
                             userId: session.user.id,
                             name: file.name,
                             size: file.size,
-                            file: base as string,
+                            file: encode(buffer),
                             status: FileStatus.NotSorted,
                             createdAt: new Date().toISOString(),
                             updatedAt: new Date().toISOString(),
                         });
                     })
-                    .catch((error) => {
-                        console.error('error', error);
+                    .catch((err) => {
+                        console.error(err);
                     });
             }
         },

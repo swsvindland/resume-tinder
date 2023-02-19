@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { createTRPCRouter, protectedProcedure, publicProcedure } from '../trpc';
-import { firebaseConfig, storage } from '../../../utils/firebase';
+import { createTRPCRouter, protectedProcedure } from '../trpc';
 import { FileStatus } from '../../../types/FileStatus';
-import { getDownloadURL, ref, uploadString } from '@firebase/storage';
-import { arrayBufferToBase64 } from '../../../utils/fileToBase64';
+import { supabase } from '../../../utils/supabase';
+import { env } from '../../../env.mjs';
+import { decode } from 'base64-arraybuffer';
 
 export const fileRouter = createTRPCRouter({
     upload: protectedProcedure
@@ -25,17 +25,19 @@ export const fileRouter = createTRPCRouter({
                     return;
                 }
 
-                const storageRef = ref(
-                    storage,
-                    `${ctx.session.user.id}/${input.id}.pdf`
-                );
+                console.log('input', input);
 
-                const snapshot = await uploadString(
-                    storageRef,
-                    input.file,
-                    'base64'
-                );
-                const url = await getDownloadURL(snapshot.ref);
+                const { data, error } = await supabase.storage
+                    .from('resumes')
+                    .upload(
+                        `${ctx.session.user.id}/${input.id}.pdf`,
+                        decode(input.file),
+                        {
+                            contentType: 'application/pdf',
+                        }
+                    );
+
+                console.log('upload', data, error);
 
                 await ctx.prisma.file.create({
                     data: {
@@ -43,7 +45,7 @@ export const fileRouter = createTRPCRouter({
                         name: input.name,
                         userId: input.userId,
                         size: input.size,
-                        url,
+                        url: data?.path ?? '',
                         status: input.status,
                         createdAt: input.createdAt,
                         updatedAt: input.updatedAt,
@@ -89,13 +91,9 @@ export const fileRouter = createTRPCRouter({
                 return null;
             }
 
-            const response = await fetch(file.url);
-            const bytes = await response.arrayBuffer();
-            const base64 = arrayBufferToBase64(bytes);
-
             return {
                 ...file,
-                file: base64,
+                url: `${env.SUPABASE_URL}/storage/v1/object/public/resumes/${file.url}`,
             };
         } catch (error) {
             console.error('error', error);
@@ -162,11 +160,4 @@ export const fileRouter = createTRPCRouter({
                 console.error('error', error);
             }
         }),
-    getFirebaseConfig: publicProcedure.query(() => {
-        try {
-            return firebaseConfig;
-        } catch (error) {
-            console.error('error', error);
-        }
-    }),
 });
