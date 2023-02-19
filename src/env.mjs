@@ -30,6 +30,8 @@ const server = z.object({
   FIREBASE_MESSAGING_SENDER_ID: z.string(),
   FIREBASE_APP_ID: z.string(),
   FIREBASE_MEASUREMENT_ID: z.string(),
+
+  ENCRYPTION_KEY: z.string(),
 });
 
 /**
@@ -61,6 +63,8 @@ const processEnv = {
   FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
   FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
   FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
+
+  ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
 };
 
 // Don't touch the part below

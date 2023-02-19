@@ -12,5 +12,13 @@ export const appRouter = createTRPCRouter({
     file: fileRouter,
 });
 
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '50mb',
+        },
+    },
+};
+
 // export type definition of API
 export type AppRouter = typeof appRouter;

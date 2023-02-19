@@ -8,13 +8,8 @@ import { api } from '../utils/api';
 import { v4 } from 'uuid';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import {
-    getDownloadURL,
-    getStorage,
-    ref,
-    uploadBytes,
-} from '@firebase/storage';
 import { FileStatus } from '../types/FileStatus';
+import { fileToBase64 } from '../utils/fileToBase64';
 
 const Upload: NextPage = () => {
     const { data: sessionData } = useSession();
@@ -65,35 +60,24 @@ function Dropzone() {
         (acceptedFiles: File[]) => {
             if (!session) return;
 
-            const storage = getStorage();
-
             for (const file of acceptedFiles) {
-                setLoading(true);
                 const id = v4();
-                const storageRef = ref(storage, `${session.user.id}/${id}.pdf`);
-                uploadBytes(storageRef, file)
-                    .then((snapshot) => {
-                        getDownloadURL(snapshot.ref)
-                            .then((url) => {
-                                uploadMutation.mutate({
-                                    id: id,
-                                    userId: session.user.id,
-                                    name: file.name,
-                                    size: file.size,
-                                    url,
-                                    status: FileStatus.NotSorted,
-                                    createdAt: new Date().toISOString(),
-                                    updatedAt: new Date().toISOString(),
-                                });
-                            })
-                            .catch((error) => {
-                                console.error('error', error);
-                            });
+                fileToBase64(file)
+                    .then((base) => {
+                        uploadMutation.mutate({
+                            id: id,
+                            userId: session.user.id,
+                            name: file.name,
+                            size: file.size,
+                            file: base as string,
+                            status: FileStatus.NotSorted,
+                            createdAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString(),
+                        });
                     })
                     .catch((error) => {
                         console.error('error', error);
-                    })
-                    .finally(() => setLoading(false));
+                    });
             }
         },
         [session, uploadMutation]

@@ -81,7 +81,7 @@ const Sorter: FC = () => {
                 >
                     Reject
                 </button>
-                <Document file={fileQuery.data?.url}>
+                <Document file={fileQuery.data?.file}>
                     <Page
                         pageNumber={1}
                         renderTextLayer={false}
